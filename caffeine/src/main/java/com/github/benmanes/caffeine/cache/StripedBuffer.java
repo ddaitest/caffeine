@@ -26,11 +26,12 @@ import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
+import com.github.benmanes.caffeine.pepsi.BufferHelper;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A base class providing the mechanics for supporting dynamic striping of bounded buffers. This
- * implementation is an adaption of the numeric 64-bit {@link java.util.concurrent.atomic.Striped64}
+ * implementation is an adaption of the numeric 64-bit java.util.concurrent.atomic.Striped64
  * class, which is used by atomic counters. The approach was modified to lazily grow an array of
  * buffers in order to minimize memory usage for caches that are not heavily contended on.
  *
@@ -85,8 +86,7 @@ abstract class StripedBuffer<E> implements Buffer<E> {
    */
 
   static final long TABLE_BUSY = UnsafeAccess.objectFieldOffset(StripedBuffer.class, "tableBusy");
-  static final long PROBE = UnsafeAccess.objectFieldOffset(Thread.class, "threadLocalRandomProbe");
-
+//  static final long PROBE = UnsafeAccess.objectFieldOffset(Thread.class, "threadLocalRandomProbe");
   /** Number of CPUS. */
   static final int NCPU = Runtime.getRuntime().availableProcessors();
 
@@ -112,7 +112,8 @@ abstract class StripedBuffer<E> implements Buffer<E> {
    * packaging restrictions.
    */
   static final int getProbe() {
-    return UnsafeAccess.UNSAFE.getInt(Thread.currentThread(), PROBE);
+//    return UnsafeAccess.UNSAFE.getInt(Thread.currentThread(), PROBE);
+    return BufferHelper.getProbe();
   }
 
   /**
@@ -123,7 +124,8 @@ abstract class StripedBuffer<E> implements Buffer<E> {
     probe ^= probe << 13; // xorshift
     probe ^= probe >>> 17;
     probe ^= probe << 5;
-    UnsafeAccess.UNSAFE.putInt(Thread.currentThread(), PROBE, probe);
+//    UnsafeAccess.UNSAFE.putInt(Thread.currentThread(), PROBE, probe);
+    BufferHelper.setProbe(probe);
     return probe;
   }
 
@@ -207,6 +209,7 @@ abstract class StripedBuffer<E> implements Buffer<E> {
     int h;
     if ((h = getProbe()) == 0) {
       ThreadLocalRandom.current(); // force initialization
+      BufferHelper.current();
       h = getProbe();
       wasUncontended = true;
     }
